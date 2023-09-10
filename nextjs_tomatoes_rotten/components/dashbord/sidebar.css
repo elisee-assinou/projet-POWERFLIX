@@ -1,0 +1,23 @@
+.admin-sidebar{
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+}
+
+.search-bar{
+    height: 30px!important;
+}
+
+.search-button{
+    height: 30px!important;
+    color: white!important;
+}
+.side-main-container {
+    height: 50%;margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.side-icon{
+    margin-left: 10px!important;
+}

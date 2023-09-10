@@ -1,0 +1,264 @@
+const User = require("../models/user");
+
+// const users = [];
+
+const getUsers = (req, res) => {
+  res.json(users);
+};
+
+const getUser = (req, res) => {
+  console.log(req);
+  const id = Number(req.params.userID);
+  const user = users.find((user) => user._id === id);
+
+  if (!user) {
+    return res.status(404).send("User not found");
+  }
+  res.json(user);
+};
+
+const createUser = (req, res) => {
+  console.log(req.body);
+  const newUser = new User({
+    name: req.body.name,
+    email: req.body.email,
+    password: req.body.password,
+    isAdmin: req.body.isAdmin,
+    isVerify: req.body.isVerify,
+    token: req.body.token,
+  });
+
+  users.push(newUser);
+  res.json(newUser);
+
+  newUser
+    .save()
+    .then((newUser) => {
+      res.status(201).json(newUser);
+    })
+    .catch((error) => {
+      return res.status(400).json(error);
+    });
+
+  users.push(newUser);
+};
+
+const updateUser = (req, res) => {
+  const id = Number(req.params.userID);
+  const index = users.findIndex((user) => user._id === id);
+  const updatedUser = {
+    name: req.name,
+    email: req.email,
+    pasword: req.pasword,
+    isAdmin: req.isAdmin,
+    isValidate: req.isValidate,
+    token: "",
+  };
+
+
+  users[index] = updatedUser;
+  res.status(200).json("User updated");
+};
+
+const deleteUser = (req, res) => {
+  const id = Number(req.params.userID);
+  const index = users.findIndex((user) => user.id === id);
+  users.splice(index, 1);
+  res.status(200).json("user deleted");
+};
+
+
+
+const User = require("../models/user.js");
+const asyncHandler = require("express-async-handler");
+const emailValidator = require("email-validator");
+const nodemailer = require("nodemailer");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
+const generateToken = require("../utils/generateToken.js");
+
+const userRegister = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+
+  const valid_email = emailValidator.validate(email);
+
+  if (valid_email) {
+    const user = await User.create({
+      email,
+      password,
+    });
+    if (user) {
+      const transporter = nodemailer.createTransport({
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
+        auth: {
+          user: "vtchanhoun@gmail.com",
+          pass: "best password",
+        },
+      });
+
+      const token = jwt.sign({ id: user._id }, pass, {
+        expiresIn: "1d",
+      });
+
+      const url = `http://localhost:3000/api/users/verification/${token}`; //localhost
+      //   const url = `${process.env.PROD_SERVER}/api/users/verification/${token}`;
+
+      const emailSent = await transporter.sendMail({
+        from: "vtchanhoun@gmail.com",
+        to: email,
+        subject: "Email verification to complete your registration!",
+        text: "Email Verification",
+        html: `<p>Please click this link to verify yourself. <a href="${url}">${url}</a></p>`,
+      });
+      if (emailSent) {
+        const date = new Intl.DateTimeFormat("en-US", {
+          year: "numeric",
+          month: "numeric",
+          day: "numeric",
+          hour: "numeric",
+          minute: "numeric",
+          second: "numeric",
+          hour12: true,
+        }).format(new Date());
+
+        res.status(201).json({
+          status: "Registration successful!",
+          message: `An email was sent to ${email} at ${date}. Please check your email for verification.`,
+        });
+      } else {
+        res.status(403);
+        throw new Error("Registration failed, Email sending failed!");
+      }
+    } else {
+      res.status(403);
+      throw new Error("Registration failed!");
+    }
+  } else {
+    res.status(403);
+    throw new Error("Invalid Email!");
+  }
+});
+
+const userLogin = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ email: email });
+  if (user && (await user.matchPassword(password))) {
+    if (user.confirmed) {
+      res.status(200);
+      res.json({
+        email: user.email,
+        token: generateToken(user._id),
+      });
+    } else {
+      res.status(403);
+      throw new Error("Please check you email and verify yourself!");
+    }
+  } else {
+    res.status(404);
+    throw new Error("Invalid Email or Password!");
+  }
+});
+
+const userEmailVerify = asyncHandler(async (req, res) => {
+  const { id } = jwt.verify(req.params.token, process.env.EMAIL_SECRET);
+  if (id) {
+    const updatedUser = await User.findByIdAndUpdate(id, { confirmed: true });
+    if (updatedUser) {
+      // return res.redirect(`http://localhost:3000/login`);        // localhost
+      return res.redirect(`${process.env.PROD_CLIENT}/login`);
+    } else {
+      res.status(404);
+      throw new Error("User not found!");
+    }
+  } else {
+    res.status(404);
+    throw new Error("User not found!");
+  }
+});
+
+const getResetPasswordLink = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email: email });
+  if (user) {
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: {
+        user: process.env.EMAIL,
+        pass: process.env.PASS,
+      },
+    });
+
+    const token = await jwt.sign({ id: user._id }, process.env.EMAIL_SECRET, {
+      expiresIn: "30min",
+    });
+
+    // const url = `http://localhost:3000/createNewPassword/${token}`;    //localhost
+    const url = `${process.env.PROD_CLIENT}/createNewPassword/${token}`;
+
+    const emailSent = await transporter.sendMail({
+      from: "littlebitprogrammer@gmail.com",
+      to: email,
+      subject: "Reset Password",
+      text: "Reset your password for React ToDo app.",
+      html: `<p>Please click this link to reset password. <a href="${url}">${url}</a></p>`,
+    });
+    if (emailSent) {
+      res.status(201).json({
+        status: "Password reset email sent.",
+        message: `Password reset link was sent to ${email}.`,
+      });
+    } else {
+      res.status(403);
+      throw new Error("Password reset failed, Email sending failed!");
+    }
+  } else {
+    res.status(403);
+    throw new Error("There is no account associated with this email!");
+  }
+});
+
+const resetPassword = asyncHandler(async (req, res) => {
+  const { id } = jwt.verify(req.params.token, process.env.EMAIL_SECRET);
+  if (id) {
+    let { newPass, conPass } = req.body;
+    if (newPass === conPass) {
+      const salt = await bcrypt.genSalt(10);
+      newPass = await bcrypt.hash(newPass, salt);
+      const updatedUser = await User.findByIdAndUpdate(id, {
+        password: newPass,
+      });
+      updatedUser.save();
+      if (updatedUser) {
+        res.status(200);
+        res.json({ status: "Password reset successfully!" });
+      } else {
+        res.status(404);
+        throw new Error("Password reset failed!");
+      }
+    } else {
+      res.status(404);
+      throw new Error("Password does not match!");
+    }
+  } else {
+    res.status(404);
+    throw new Error("User not found!");
+  }
+});
+
+module.exports = {
+    getUsers,
+    getUser,
+    createUser,
+    updateUser,
+    deleteUser,
+    userRegister,
+    userLogin,
+    userEmailVerify,
+    getResetPasswordLink,
+    getResetPasswordLink,
+    resetPassword
+  };
