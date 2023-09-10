@@ -127,6 +127,49 @@ const deleteUser = async (req, res) => {
     return res.status(200).json("user deleted");
   }
 };
+const addMovieToUserPreferences = async (req, res) => {
+  const userId = req.params.userId; // Supposons que vous ayez un paramètre d'URL pour l'ID de l'utilisateur
+  const movieId = req.body.movieId; // Supposons que vous recevez l'ID du film dans le corps de la requête
+
+  try {
+    // Vérifiez si l'utilisateur existe
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: "Utilisateur non trouvé" });
+    }
+
+    // Ajoutez le film à la liste de préférences de l'utilisateur
+    if (!user.preferences.includes(movieId)) {
+      user.preferences.push(movieId);
+      await user.save();
+      return res.status(201).json({ message: "Film ajouté aux préférences de l'utilisateur" });
+    } else {
+      return res.status(400).json({ error: "Le film est déjà dans les préférences de l'utilisateur" });
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Erreur interne du serveur" });
+  }
+};
+// Récupérer les préférences de l'utilisateur
+const getUserPreferences = async (req, res) => {
+  const userId = req.params.userId; // Récupérez l'ID de l'utilisateur depuis les paramètres d'URL
+
+  try {
+    // Recherchez l'utilisateur par ID et récupérez ses préférences
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ error: "Utilisateur non trouvé" });
+    }
+
+    const preferences = user.preferences;
+    return res.status(200).json(preferences);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Erreur interne du serveur" });
+  }
+};
 
 module.exports = {
   getUsers,
@@ -134,5 +177,7 @@ module.exports = {
   createUser,
   updateUser,
   deleteUser,
+  addMovieToUserPreferences,
+  getUserPreferences,
   // login,
 };

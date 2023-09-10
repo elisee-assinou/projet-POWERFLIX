@@ -1,31 +1,44 @@
-import React, { useState } from "react";
+"use client";
+import React, { useState, useEffect } from "react";
+// import { redirect } from "next/navigation";
+// import { useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.css";
-import "./auth.css";
+import "../components/auth.css";
 
-function Login() {
+function Register() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [error, setError] = useState("");
 
   const submitHandler = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
 
-    if (!email || !password) {
+    if (!name || !email || !password || !passwordConfirm) {
       setError("Tous les champs sont obligatoires");
       return;
     }
-    if (password.length < 8) {
-      setError("Password incorrecte");
+
+    const namePattern = /^[a-zA-Z\s]*$/;
+    if (!namePattern.test(name)) {
+      setError("Le nom ne doit contenir que des lettres et des espaces");
       return;
     }
 
-    const response = await fetch("http://localhost:5000/user/login", {
+    if (password !== passwordConfirm || password.length < 8) {
+      setError("Les mots de passe ne correspondent pas ou trop court!");
+      return;
+    }
+
+    const response = await fetch("http://localhost:5000/user/register", {
       method: "POST",
       body: JSON.stringify({
+        name,
         email,
         password,
-        // isAdmin: false,
-        // isVerify: false,
+        isAdmin: false,
+        isVerify: false,
       }),
       headers: {
         "Content-Type": "application/json",
@@ -34,9 +47,10 @@ function Login() {
     console.log(response);
 
     if (response.ok) {
+      alert("Vous êtes inscrit !");
       setError("");
       setTimeout(
-        (alert("Connecting succesfuly !"), (window.location.href = "/")),
+        window.location.href = "/login",
         // redirect("/"),
         2000
       );
@@ -63,6 +77,18 @@ function Login() {
                     <form onSubmit={submitHandler}>
                       <div className="form-outline mb-2">
                         <input
+                          type="text"
+                          id="form3Example1cg"
+                          className="form-control form-control-lg"
+                          placeholder="Your Name"
+                          name="name"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="form-outline mb-2">
+                        <input
                           type="email"
                           id="form3Example3cg"
                           className="form-control form-control-lg"
@@ -83,19 +109,30 @@ function Login() {
                         />
                       </div>
 
+                      <div className="form-outline mb-2">
+                        <input
+                          type="password"
+                          id="form3Example4cdg"
+                          className="form-control form-control-lg"
+                          placeholder="Repeat your password"
+                          value={passwordConfirm}
+                          onChange={(e) => setPasswordConfirm(e.target.value)}
+                        />
+                      </div>
+
                       <div className="d-flex justify-content-center">
                         <button
                           type="submit"
                           className="btn btn-warning btn-block btn-lg gradient-custom-4 text-body"
                         >
-                          Login
+                          Register
                         </button>
                       </div>
 
                       <div className="text-center text-muted mt-3 mb-0 login-space">
-                        <p>Not have account?</p>
-                        <a href="/register" className="fw-bold text-body">
-                          <u>Register here</u>
+                        <p>Have already an account?</p>
+                        <a href="/login" className="fw-bold text-body">
+                          <u>Login here</u>
                         </a>
                       </div>
                     </form>
@@ -110,4 +147,4 @@ function Login() {
   );
 }
 
-export default Login;
+export default Register;

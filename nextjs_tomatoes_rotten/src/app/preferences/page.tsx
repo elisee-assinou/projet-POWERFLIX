@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faThumbsUp, faComment, faStar, faCommentSlash } from '@fortawesome/free-solid-svg-icons';
@@ -55,7 +56,7 @@ function CommentContainer({ comments, users }) {
   );
 }
 
-function MovieList({ IdUser }) {
+function UserPreferences({ IdUser }) {
   const [movieData, setMovieData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [commentData, setCommentData] = useState({});
@@ -63,6 +64,7 @@ function MovieList({ IdUser }) {
   const moviesPerPage = 6;
   const [showComments, setShowComments] = useState({});
   const [users, setUsers] = useState({});
+  const [userPreferences, setUserPreferences] = useState([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -81,9 +83,30 @@ function MovieList({ IdUser }) {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    async function fetchUserPreferences() {
+      try {
+        const response = await fetch(`http://localhost:5000/user/${IdUser}/preferences`);
+        if (response.status === 200) {
+          const data = await response.json();
+          setUserPreferences(data);
+        } else {
+          console.error('Erreur lors de la récupération des préférences de l\'utilisateur');
+        }
+      } catch (error) {
+        console.error('Erreur lors de la requête pour récupérer les préférences de l\'utilisateur:', error);
+      }
+    }
+
+    if (IdUser) {
+      fetchUserPreferences();
+    }
+  }, [IdUser]);
+
   const indexOfLastMovie = currentPage * moviesPerPage;
   const indexOfFirstMovie = indexOfLastMovie - moviesPerPage;
-  const currentMovies = movieData.slice(indexOfFirstMovie, indexOfLastMovie);
+  const filteredMovies = movieData.filter(movie => userPreferences.includes(movie.id));
+  const currentMovies = filteredMovies.slice(indexOfFirstMovie, indexOfLastMovie);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
@@ -142,130 +165,127 @@ function MovieList({ IdUser }) {
       console.error('Erreur lors de la récupération des commentaires :', error);
     }
   };
-    // Fonction pour ajouter un film à la liste de préférences de l'utilisateur
-    const addMovieToPreferences = async (movieId) => {
-      try {
-        const url = `http://localhost:5000/${IdUser}/preferences`; // Supposons que vous avez une route sur votre serveur pour gérer les préférences de l'utilisateur
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            movieId: movieId,
-          }),
-        });
-  
-        if (response.status === 201) {
-          alert('Film ajouté a vos preferences');
-          // Vous pouvez également mettre à jour l'état de l'utilisateur ici si nécessaire
-        } else {
-          alert('Erreur : certainement deja ajoute');
-        }
-      } catch (error) {
-        console.error('Erreur lors de la requête pour ajouter le film aux préférences de l\'utilisateur :', error);
+
+  const addMovieToPreferences = async (movieId) => {
+    try {
+      const url = `http://localhost:5000/user/${IdUser}/preferences`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          movie_id: movieId,
+        }),
+      });
+
+      if (response.status === 201) {
+        alert('Film ajouté à vos préférences');
+        setUserPreferences([...userPreferences, movieId]);
+      } else {
+        alert('Erreur : certainement déjà ajouté');
       }
-    };
+    } catch (error) {
+      console.error('Erreur lors de la requête pour ajouter le film aux préférences de l\'utilisateur :', error);
+    }
+  };
 
   return (
     <div className="container mx-auto p-4">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {movieData.length > 0 ? (
-          currentMovies.map((movie) => (
-            <div
-              key={movie.id}
-              className="bg-white rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-transform duration-300 ease-in-out"
-            >
-              <img
-                src={`https://image.tmdb.org/t/p/w300${movie.poster_path}`}
-                alt={movie.title}
-                className="w-full h-64 object-cover"
-              />
-              <div className="p-4">
-                <h3 className="text-xl font-semibold">{movie.title}</h3>
-                <p className="text-gray-600">{movie.release_date}</p>
-                <p className="mt-2 text-sm text-gray-700">{movie.overview}</p>
-              </div>
-              <div className="p-4 flex justify-between items-center">
-                <div>
-                  {IdUser && (
-                    <>
-                      <button
-                        className="mr-2 bg-green-500 text-white px-4 py-2 rounded"
-                        onClick={() => setShowCommentForm({ ...showCommentForm, [movie.id]: true })}
-                      >
-                        <FontAwesomeIcon icon={faComment} /> Comment
-                      </button>
-                      <button
-                        className="bg-yellow-500 text-white px-4 py-2 rounded"
-                        onClick={() => toggleCommentVisibility(movie.id)}
-                      >
-                        {showComments[movie.id] ? (
-                          <FontAwesomeIcon icon={faCommentSlash} />
-                        ) : (
-                          <FontAwesomeIcon icon={faComment} />
-                        )}
-                      </button>
-                    </>
-                  )}
-                </div>
-                <div>
-                  <button className="bg-red-500 text-white px-4 py-2 rounded">Trailer</button>
-                </div>
-
+        {currentMovies.map((movie) => (
+          <div
+            key={movie.id}
+            className="bg-white rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-transform duration-300 ease-in-out"
+          >
+            <img
+              src={`https://image.tmdb.org/t/p/w300${movie.poster_path}`}
+              alt={movie.title}
+              className="w-full h-64 object-cover"
+            />
+            <div className="p-4">
+              <h3 className="text-xl font-semibold">{movie.title}</h3>
+              <p className="text-gray-600">{movie.release_date}</p>
+              <p className="mt-2 text-sm text-gray-700">{movie.overview}</p>
+            </div>
+            <div className="p-4 flex justify-between items-center">
+              <div>
                 {IdUser && (
-                  <div>
+                  <>
                     <button
-                      className="bg-blue-500 text-white px-4 py-2 rounded"
-                      onClick={() => addMovieToPreferences(movie.id)} // Appeler la fonction avec l'ID du film
+                      className="mr-2 bg-green-500 text-white px-4 py-2 rounded"
+                      onClick={() => setShowCommentForm({ ...showCommentForm, [movie.id]: true })}
                     >
-                      Add
+                      <FontAwesomeIcon icon={faComment} /> Comment
                     </button>
-                  </div>
+                    <button
+                      className="bg-yellow-500 text-white px-4 py-2 rounded"
+                      onClick={() => toggleCommentVisibility(movie.id)}
+                    >
+                      {showComments[movie.id] ? (
+                        <FontAwesomeIcon icon={faCommentSlash} />
+                      ) : (
+                        <FontAwesomeIcon icon={faComment} />
+                      )}
+                    </button>
+                  </>
                 )}
               </div>
-              {IdUser && showCommentForm[movie.id] && (
-                <div className="p-4">
-                  <textarea
-                    className="w-full h-16 border border-gray-300 p-2 rounded"
-                    placeholder="Écrivez votre commentaire..."
-                    value={commentData[movie.id] || ''}
-                    onChange={(e) => setCommentData({ ...commentData, [movie.id]: e.target.value })}
-                  />
+              <div>
+                <button className="bg-red-500 text-white px-4 py-2 rounded">Trailer</button>
+              </div>
+
+              {IdUser && (
+                <div>
                   <button
-                    className="bg-blue-500 text-white px-4 py-2 rounded mt-2"
-                    onClick={() => handleCommentSubmit(movie.id)}
+                    className={`bg-blue-500 text-white px-4 py-2 rounded ${userPreferences.includes(movie.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => addMovieToPreferences(movie.id)}
+                    disabled={userPreferences.includes(movie.id)}
                   >
-                    Soumettre le commentaire
+                    Add
                   </button>
                 </div>
               )}
-              {IdUser && showComments[movie.id] && showComments[movie.id].length > 0 && (
-                <CommentContainer
-                  comments={showComments[movie.id]}
-                  users={users}
+            </div>
+            {IdUser && showCommentForm[movie.id] && (
+              <div className="p-4">
+                <textarea
+                  className="w-full h-16 border border-gray-300 p-2 rounded"
+                  placeholder="Écrivez votre commentaire..."
+                  value={commentData[movie.id] || ''}
+                  onChange={(e) => setCommentData({ ...commentData, [movie.id]: e.target.value })}
                 />
-              )}
-              <div className="p-4 flex justify-between items-center bg-gray-100">
-                <div className="text-sm text-gray-600">
-                  <FontAwesomeIcon icon={faThumbsUp} /> Likes: {movie.vote_count || 0}
-                </div>
-                <div className="text-sm text-gray-600">
-                  <FontAwesomeIcon icon={faComment} /> Comments: {showComments[movie.id] ? showComments[movie.id].length : 0}
-                </div>
-                <div className="text-sm text-gray-600">
-                  <FontAwesomeIcon icon={faStar} /> Votes: {movie.vote_average || 0}
-                </div>
+                <button
+                  className="bg-blue-500 text-white px-4 py-2 rounded mt-2"
+                  onClick={() => handleCommentSubmit(movie.id)}
+                >
+                  Soumettre le commentaire
+                </button>
+              </div>
+            )}
+            {IdUser && showComments[movie.id] && showComments[movie.id].length > 0 && (
+              <CommentContainer
+                comments={showComments[movie.id]}
+                users={users}
+              />
+            )}
+            <div className="p-4 flex justify-between items-center bg-gray-100">
+              <div className="text-sm text-gray-600">
+                <FontAwesomeIcon icon={faThumbsUp} /> Likes: {movie.vote_count || 0}
+              </div>
+              <div className="text-sm text-gray-600">
+                <FontAwesomeIcon icon={faComment} /> Comments: {showComments[movie.id] ? showComments[movie.id].length : 0}
+              </div>
+              <div className="text-sm text-gray-600">
+                <FontAwesomeIcon icon={faStar} /> Votes: {movie.vote_average || 0}
               </div>
             </div>
-          ))
-        ) : (
-          <div>Loading...</div>
-        )}
+          </div>
+        ))}
       </div>
       <div className="mt-4">
         <ul className="flex justify-center">
-          {Array.from({ length: Math.ceil(movieData.length / moviesPerPage) }).map((_, index) => (
+          {Array.from({ length: Math.ceil(filteredMovies.length / moviesPerPage) }).map((_, index) => (
             <li key={index} className="mx-2">
               <button
                 onClick={() => paginate(index + 1)}
@@ -282,4 +302,4 @@ function MovieList({ IdUser }) {
   );
 }
 
-export default MovieList;
+export default UserPreferences;

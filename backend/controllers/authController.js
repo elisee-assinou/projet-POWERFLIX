@@ -3,40 +3,48 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const jwtSecret =
   "L-OljQX^`%h2nHN/8]!5|ukKV86i]&~pTo£Os]1J9(?ZuZ'cvmhcmhvhqcvjhùvqhjchqvhvqùkbhcùkhbqùhbùchbùhcq(-è_ç_èé_t_-éè-éç_yçhidgh";
+  const login = async (req, res) => {
+    try {
+      const loginUser = await User.findOne({
+        email: req.body.email,
+      });
+  
+      if (!loginUser) {
+        return res.status(400).json({ error: "Utilisateur inexistant" });
+      }
 
-const login = async (req, res) => {
-  console.log(req.body);
-  // console.log(req);
-  const loginUser = await User.findOne({
-    email: req.body.email,
-  });
+      // Vérifier si l'utilisateur a un compte valide
+      if (!loginUser.isVerify) {
+        return res.status(400).json({ error: "Veuillez consulter votre boite mail pour valider votre compte" });
+      }
+  
+      const isPasswordCorrect = await bcrypt.compare(
+        req.body.password,
+        loginUser.password
+      );
+  
+      if (isPasswordCorrect) {
+        const loginToken = jwt.sign({ email: loginUser.email, name: loginUser.name, idUser: loginUser.id }, jwtSecret, {
+          expiresIn: "36000000",
+        });
+  
+        // Envoyer le token JWT en réponse avec un message de succès
+        return res.status(200).json({
+          success: "Connexion réussie",
+          loginToken: loginToken, // Vous pouvez également utiliser simplement loginToken
+        });
+      } else {
+        return res
+          .status(400)
+          .json({ error: "Adresse e-mail ou mot de passe incorrect" });
+      }
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Erreur interne du serveur" });
+    }
+  };
 
-  if (!loginUser) {
-    return res.status(400).json({ error: "Utilisateur inexistant" });
-  }
-
-  const isPasswordCorrect = await bcrypt.compare(
-    req.body.password,
-    loginUser.password
-  );
-  if (isPasswordCorrect) {
-    const loginToken = jwt.sign({ email: loginUser.email }, jwtSecret, {
-      expiresIn: "36000000",
-    });
-    // console.log(loginToken);
-
-    const setCookie = await res.cookie("sacof_token", loginToken, {
-      httpOnly: true,
-    });
-    console.log(setCookie);
-    return res.redirect("/");
-    // return res.status(200).json({ success: "Connexion réussie", loginToken });
-  } else {
-    return res
-      .status(400)
-      .json({ error: "Adresse e-mail ou mot de passe incorrect" });
-  }
-};
+  
 
 const register = async (req, res) => {
   const existingUser = await User.findOne({
@@ -156,9 +164,16 @@ const mail_verification = async (req, res) => {
     }
   }
 };
+const logout = async (req, res) => {
+
+  res.clearCookie("sacof_token"); // Assurez-vous que le nom du cookie correspond à celui que vous utilisez
+
+  res.status(200).json({ success: "Déconnexion réussie" });
+};
 
 module.exports = {
   register,
   login,
   mail_verification,
+  logout,
 };

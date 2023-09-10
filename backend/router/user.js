@@ -9,9 +9,11 @@ const {
   createUser,
   updateUser,
   deleteUser,
+  addMovieToUserPreferences,
+  getUserPreferences
 } = require("../controllers/user.js");
 
-const { login, register, mail_verification } = require("../controllers/authController.js");
+const { login, register, mail_verification,logout } = require("../controllers/authController.js");
 
 router.get("/user", getUsers);
 router.get("/user/:userID", getUser);
@@ -19,6 +21,15 @@ router.get("/user/:userID", getUser);
 router.post("/user", createUser);
 router.post("/user/login", login);
 router.post("/user/register", register);
+router.post("/user/logout", logout);
+// Route pour ajouter un film aux préférences de l'utilisateur
+router.post("/:userId/preferences", addMovieToUserPreferences);
+
+// Route pour récupérer les préférences de l'utilisateur
+router.get("/:userId/preferences", getUserPreferences);
+
+
+
 
 router.put("/user/:userID", updateUser);
 

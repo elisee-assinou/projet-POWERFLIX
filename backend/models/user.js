@@ -26,9 +26,8 @@ const userSchema = new mongoose.Schema({
     required: true,
     default: false,
   },
-  favorites: {
-    type: [Number],
-    required: true,
+  preferences: {
+    type: [Number], // Supposons que vous stockez les IDs des films préférés en tant que nombres.
     default: [],
   },
   token: {
