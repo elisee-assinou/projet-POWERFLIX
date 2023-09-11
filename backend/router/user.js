@@ -10,7 +10,8 @@ const {
   updateUser,
   deleteUser,
   addMovieToUserPreferences,
-  getUserPreferences
+  getUserPreferences,
+  deletePreference,
 } = require("../controllers/user.js");
 
 const { login, register, mail_verification,logout } = require("../controllers/authController.js");
@@ -27,6 +28,9 @@ router.post("/:userId/preferences", addMovieToUserPreferences);
 
 // Route pour récupérer les préférences de l'utilisateur
 router.get("/:userId/preferences", getUserPreferences);
+
+router.delete('/:userId/preferences/:movieId', deletePreference);
+
 
 
 

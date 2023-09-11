@@ -171,6 +171,31 @@ const getUserPreferences = async (req, res) => {
   }
 };
 
+const deletePreference = async (req, res) => {
+  const userId = req.params.userId; // Supposons que vous ayez un paramètre d'URL pour l'ID de l'utilisateur
+  const movieId = req.params.movieId; // Supposons que vous recevez l'ID du film dans le corps de la requête
+
+  try {
+    // Vérifiez si l'utilisateur existe
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: "Utilisateur non trouvé" });
+    }
+
+    // Supprimez le film de la liste de préférences de l'utilisateur
+    if (user.preferences.includes(movieId)) {
+      user.preferences = user.preferences.filter((id) => id !== movieId);
+      await user.save();
+      return res.status(200).json({ message: "Film supprimé des préférences de l'utilisateur" });
+    } else {
+      return res.status(400).json({ error: "Le film n'est pas dans les préférences de l'utilisateur" });
+    }
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Erreur interne du serveur" });
+  }
+};
+
 module.exports = {
   getUsers,
   getUser,
@@ -179,5 +204,6 @@ module.exports = {
   deleteUser,
   addMovieToUserPreferences,
   getUserPreferences,
+  deletePreference,
   // login,
 };

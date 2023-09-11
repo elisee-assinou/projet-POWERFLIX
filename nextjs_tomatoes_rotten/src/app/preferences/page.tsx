@@ -199,7 +199,7 @@ function UserPreferences() {
         method: 'DELETE',
       });
 
-      if (response.status === 204) {
+      if (response.status === 200) {
         // Suppression réussie, mettez à jour l'état des préférences de l'utilisateur
         const updatedPreferences = userPreferences.filter((id) => id !== movieId);
         setUserPreferences(updatedPreferences);
