@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faThumbsUp, faComment, faStar, faCommentSlash } from '@fortawesome/free-solid-svg-icons';
 
+import jwt_decode, { JwtPayload } from 'jwt-decode';
+
 // Styles CSS pour le composant CommentContainer
 const commentContainerStyles = {
   maxWidth: '400px',
@@ -56,7 +58,7 @@ function CommentContainer({ comments, users }) {
   );
 }
 
-function UserPreferences({ IdUser }) {
+function UserPreferences() {
   const [movieData, setMovieData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [commentData, setCommentData] = useState({});
@@ -66,6 +68,25 @@ function UserPreferences({ IdUser }) {
   const [users, setUsers] = useState({});
   const [userPreferences, setUserPreferences] = useState([]);
 
+  // Récupérez le token depuis le local storage
+  const token = localStorage.getItem('accessToken');
+
+  // Fonction pour extraire l'ID de l'utilisateur à partir du token
+  const getUserIdFromToken = (token) => {
+    if (token) {
+      try {
+        const decodedToken = jwt_decode<JwtPayload>(token); // Specify JwtPayload as the type
+        const res = decodedToken.idUser;
+        return res;
+      } catch (error) {
+        console.error("Error decoding token: ", error);
+      }
+    }
+  };
+
+  // Récupérez l'ID de l'utilisateur à partir du token
+  const IdUser = getUserIdFromToken(token);
+
   useEffect(() => {
     async function fetchData() {
       try {
@@ -74,19 +95,25 @@ function UserPreferences({ IdUser }) {
         );
         const data = await response.json();
 
-        setMovieData(data);
+        // Filtrer les films en fonction des préférences de l'utilisateur
+        const filteredMovies = data.filter((movie) =>
+          userPreferences.includes(movie.id)
+        );
+
+        setMovieData(filteredMovies);
       } catch (error) {
         console.error('Erreur lors de la récupération des données :', error);
       }
     }
 
     fetchData();
-  }, []);
+  }, [userPreferences]);
 
   useEffect(() => {
     async function fetchUserPreferences() {
       try {
-        const response = await fetch(`http://localhost:5000/user/${IdUser}/preferences`);
+        // Faites une requête pour récupérer les préférences de l'utilisateur en utilisant l'ID de l'utilisateur
+        const response = await fetch(`http://localhost:5000/${IdUser}/preferences`);
         if (response.status === 200) {
           const data = await response.json();
           setUserPreferences(data);
@@ -105,8 +132,7 @@ function UserPreferences({ IdUser }) {
 
   const indexOfLastMovie = currentPage * moviesPerPage;
   const indexOfFirstMovie = indexOfLastMovie - moviesPerPage;
-  const filteredMovies = movieData.filter(movie => userPreferences.includes(movie.id));
-  const currentMovies = filteredMovies.slice(indexOfFirstMovie, indexOfLastMovie);
+  const currentMovies = movieData.slice(indexOfFirstMovie, indexOfLastMovie);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
@@ -166,27 +192,22 @@ function UserPreferences({ IdUser }) {
     }
   };
 
-  const addMovieToPreferences = async (movieId) => {
+  const removeMovieFromPreferences = async (movieId) => {
     try {
-      const url = `http://localhost:5000/user/${IdUser}/preferences`;
+      const url = `http://localhost:5000/${IdUser}/preferences/${movieId}`;
       const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          movie_id: movieId,
-        }),
+        method: 'DELETE',
       });
 
-      if (response.status === 201) {
-        alert('Film ajouté à vos préférences');
-        setUserPreferences([...userPreferences, movieId]);
+      if (response.status === 204) {
+        // Suppression réussie, mettez à jour l'état des préférences de l'utilisateur
+        const updatedPreferences = userPreferences.filter((id) => id !== movieId);
+        setUserPreferences(updatedPreferences);
       } else {
-        alert('Erreur : certainement déjà ajouté');
+        alert('Erreur lors de la suppression du film des préférences.');
       }
     } catch (error) {
-      console.error('Erreur lors de la requête pour ajouter le film aux préférences de l\'utilisateur :', error);
+      console.error('Erreur lors de la requête pour supprimer le film des préférences de l\'utilisateur :', error);
     }
   };
 
@@ -236,15 +257,24 @@ function UserPreferences({ IdUser }) {
               </div>
 
               {IdUser && (
-                <div>
-                  <button
-                    className={`bg-blue-500 text-white px-4 py-2 rounded ${userPreferences.includes(movie.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={() => addMovieToPreferences(movie.id)}
-                    disabled={userPreferences.includes(movie.id)}
-                  >
-                    Add
-                  </button>
-                </div>
+                <>
+                  {userPreferences.includes(movie.id) ? (
+                    <button
+                      className="bg-red-500 text-white px-4 py-2 rounded"
+                      onClick={() => removeMovieFromPreferences(movie.id)}
+                    >
+                      Delete
+                    </button>
+                  ) : (
+                    <button
+                      className={`bg-blue-500 text-white px-4 py-2 rounded ${userPreferences.includes(movie.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      onClick={() => addMovieToPreferences(movie.id)}
+                      disabled={userPreferences.includes(movie.id)}
+                    >
+                      Add
+                    </button>
+                  )}
+                </>
               )}
             </div>
             {IdUser && showCommentForm[movie.id] && (
@@ -285,7 +315,7 @@ function UserPreferences({ IdUser }) {
       </div>
       <div className="mt-4">
         <ul className="flex justify-center">
-          {Array.from({ length: Math.ceil(filteredMovies.length / moviesPerPage) }).map((_, index) => (
+          {Array.from({ length: Math.ceil(movieData.length / moviesPerPage) }).map((_, index) => (
             <li key={index} className="mx-2">
               <button
                 onClick={() => paginate(index + 1)}
